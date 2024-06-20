@@ -1,18 +1,5 @@
 ## V2Ray 基于 Nginx 的 vmess+ws+tls 一键安装脚本
 
-> 感谢 JetBrains 提供的非商业开源软件开发授权
-
-> Thanks for non-commercial open source development authorization by JetBrains
-### 关于 VMess MD5 认证信息 淘汰机制
-> 自 2022 年 1 月 1 日起，服务器端将默认禁用对于 MD5 认证信息 的兼容。任何使用 MD5 认证信息的客户端将无法连接到禁用 VMess MD5 认证信息的服务器端。
-
-受到影响的用户，我们强烈建议您重新安装，并设置alterid为0（默认值目前已经修改为0），不再使用 VMess MD5 认证机制
-如果您不想重新安装，您可以通过使用 https://github.com/KukiSa/VMess-fAEAD-disable 强制开启对于 MD5 认证机制的兼容
-
-### Telegram 群组
-* telegram 交流群:https://t.me/bb33bb_v2ray 
-* telegram 更新公告频道：https://t.me/bb33bb_channel
-
 ### 准备工作
 * 准备一个域名，并将A记录添加好。
 * [V2ray官方说明](https://www.v2ray.com/)，了解 TLS WebSocket 及 V2ray 相关信息
@@ -40,7 +27,6 @@ wget -N --no-check-certificate -q -O install.sh "https://raw.githubusercontent.c
 > 更新内容请查看 CHANGELOG.md
 
 ### 鸣谢
-* ~~本脚本的另一个分支版本（Use Host）地址： https://github.com/dylanbai8/V2Ray_ws-tls_Website_onekey 请根据需求进行选择~~ 该作者可能已停止维护
 * 本脚本中 MTProxy-go TLS 版本项目引用 https://github.com/whunt1/onekeymakemtg 在此感谢 whunt1
 * 本脚本中 锐速4合1脚本原项目引用 https://www.94ish.me/1635.html 在此感谢
 * 本脚本中 锐速4合1脚本修改版项目引用 https://github.com/ylx2016/Linux-NetSpeed 在此感谢 ylx2016
@@ -95,16 +81,3 @@ V2ray 客户端配置: `~/v2ray_info.inf`
 Nginx 目录： `/etc/nginx`
 
 证书文件: `/data/v2ray.key 和 /data/v2ray.crt` 请注意证书权限设置
-
-### 捐赠
-
-您可以使用我的 搬瓦工 AFF 购买 VPS
-
-https://bandwagonhost.com/aff.php?aff=63939
-
-您可以使用我的 justmysocks AFF 购买搬瓦工提供的代理
-
-https://justmysocks.net/members/aff.php?aff=17621
-
-
-
