@@ -10,8 +10,8 @@
 如果您不想重新安装，您可以通过使用 https://github.com/KukiSa/VMess-fAEAD-disable 强制开启对于 MD5 认证机制的兼容
 
 ### Telegram 群组
-* telegram 交流群:https://t.me/wulabing_v2ray 
-* telegram 更新公告频道：https://t.me/wulabing_channel
+* telegram 交流群:https://t.me/bb33bb_v2ray 
+* telegram 更新公告频道：https://t.me/bb33bb_channel
 
 ### 准备工作
 * 准备一个域名，并将A记录添加好。
@@ -21,12 +21,12 @@
 ### 安装/更新方式（h2 和 ws 版本已合并）
 Vmess+websocket+TLS+Nginx+Website
 ```
-wget -N --no-check-certificate -q -O install.sh "https://raw.githubusercontent.com/wulabing/V2Ray_ws-tls_bash_onekey/master/install.sh" && chmod +x install.sh && bash install.sh
+wget -N --no-check-certificate -q -O install.sh "https://raw.githubusercontent.com/bb33bb/V2Ray_ws-tls_bash_onekey/master/install.sh" && chmod +x install.sh && bash install.sh
 ```
 
 VLESS+websocket+TLS+Nginx+Website
 ```
-wget -N --no-check-certificate -q -O install.sh "https://raw.githubusercontent.com/wulabing/V2Ray_ws-tls_bash_onekey/dev/install.sh" && chmod +x install.sh && bash install.sh
+wget -N --no-check-certificate -q -O install.sh "https://raw.githubusercontent.com/bb33bb/V2Ray_ws-tls_bash_onekey/dev/install.sh" && chmod +x install.sh && bash install.sh
 ```
 
 ### 注意事项
@@ -105,7 +105,6 @@ https://bandwagonhost.com/aff.php?aff=63939
 您可以使用我的 justmysocks AFF 购买搬瓦工提供的代理
 
 https://justmysocks.net/members/aff.php?aff=17621
-
 
 
 
