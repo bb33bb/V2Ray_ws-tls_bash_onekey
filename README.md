@@ -1,8 +1,21 @@
 ## V2Ray 基于 Nginx 的 vmess+ws+tls 一键安装脚本
 
+网站目录
+
+```
+/home/wwwroot
+```
+
+公钥私钥目录
+
+```
+
+```
+
+
+
 ### 准备工作
 * 准备一个域名，并将A记录添加好。
-* [V2ray官方说明](https://www.v2ray.com/)，了解 TLS WebSocket 及 V2ray 相关信息
 * 安装好 wget
 
 ### 安装/更新方式（h2 和 ws 版本已合并）
