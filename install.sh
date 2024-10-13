@@ -54,7 +54,7 @@ old_config_status="off"
 [[ -f "/etc/v2ray/vmess_qr.json" ]] && mv /etc/v2ray/vmess_qr.json $v2ray_qr_config_file
 
 #简易随机数
-random_num=$((RANDOM%12+4))
+random_num=$((RANDOM % 12 + 4))
 #生成伪装路径
 camouflage="/$(head -n 10 /dev/urandom | md5sum | head -c ${random_num})/"
 
@@ -419,8 +419,8 @@ nginx_install() {
 ssl_install() {
     if [[ "${ID}" == "centos" ]]; then
         ${INS} install socat nc -y
-	elif [[ "${ID}" == "debian" && ${VERSION_ID} -ge 12 ]]; then
-		${INS} install socat netcat-openbsd -y
+    elif [[ "${ID}" == "debian" && ${VERSION_ID} -ge 12 ]]; then
+        ${INS} install socat netcat-openbsd -y
     else
         ${INS} install socat netcat-openbsd -y
     fi
@@ -429,29 +429,83 @@ ssl_install() {
     curl https://get.acme.sh | sh
     judge "安装 SSL 证书生成脚本"
 }
+query_cloudflare_dns() {
+    local domain=$1
+    local record_type=${2:-A}
+    local url="https://cloudflare-dns.com/dns-query"
 
+    response=$(curl -s -H "Accept: application/dns-json" \
+        "${url}?name=${domain}&type=${record_type}")
+
+    if [ $? -eq 0 ]; then
+        ip=$(echo "$response" | jq -r '.Answer[] | select(.type == 1) | .data' 2>/dev/null | head -n 1)
+        if [ -n "$ip" ]; then
+            echo "$ip"
+        else
+            echo "Error: No IP address found in the response" >&2
+            return 1
+        fi
+    else
+        echo "Error: Failed to query Cloudflare DNS" >&2
+        return 1
+    fi
+}
 domain_check() {
+    echo "开始执行domain_check函数"
     read -rp "请输入你的域名信息(eg:www.bb33bb.com):" domain
-    domain_ipv4="$(dig +short "${domain}" a)"
-    domain_ipv6="$(dig +short "${domain}" aaaa)"
+    echo "输入的域名是: $domain"
+
+    record_type="A"
+    max_retries=3
+    retry_count=0
+
+    while [ $retry_count -lt $max_retries ]; do
+        domain_ipv4=$(query_cloudflare_dns "$domain" A)
+        if [ $? -eq 0 ] && [ -n "$domain_ipv4" ]; then
+            echo "域名IPv4解析结果: $domain_ipv4"
+            break
+        else
+            echo "尝试 $((retry_count + 1))/$max_retries 失败,重试..."
+            retry_count=$((retry_count + 1))
+            sleep 2
+        fi
+    done
+
+    if [ $retry_count -eq $max_retries ]; then
+        echo "Error: 无法解析域名的IPv4地址,请检查您的域名设置" >&2
+        exit 1
+    fi
+
     echo -e "${OK} ${GreenBG} 正在获取 公网ip 信息，请耐心等待 ${Font}"
+
     wgcfv4_status=$(curl -s4m8 https://www.cloudflare.com/cdn-cgi/trace -k | grep warp | cut -d= -f2)
+    echo "wgcfv4状态: $wgcfv4_status"
     wgcfv6_status=$(curl -s6m8 https://www.cloudflare.com/cdn-cgi/trace -k | grep warp | cut -d= -f2)
+    echo "wgcfv6状态: $wgcfv6_status"
+
     if [[ ${wgcfv4_status} =~ "on"|"plus" ]] || [[ ${wgcfv6_status} =~ "on"|"plus" ]]; then
-        # 关闭wgcf-warp，以防误判VPS IP情况
+        echo "检测到wgcf-warp开启,正在关闭..."
         wg-quick down wgcf >/dev/null 2>&1
         echo -e "${OK} ${GreenBG} 已关闭 wgcf-warp ${Font}"
     fi
+
     local_ipv4=$(curl -s4m8 http://ip.sb)
+    echo "本机IPv4: $local_ipv4"
     local_ipv6=$(curl -s6m8 http://ip.sb)
+    echo "本机IPv6: $local_ipv6"
+
     if [[ -z ${local_ipv4} && -n ${local_ipv6} ]]; then
-        echo -e nameserver 2a01:4f8:c2c:123f::1 > /etc/resolv.conf
+        echo "检测到IPv6 Only的VPS,添加DNS64服务器"
+        echo -e nameserver 2a01:4f8:c2c:123f::1 >/etc/resolv.conf
         echo -e "${OK} ${GreenBG} 识别为 IPv6 Only 的 VPS，自动添加 DNS64 服务器 ${Font}"
     fi
-    echo -e "域名 DNS 解析到的的 IP：${domain_ip}"
+
+    echo -e "域名 DNS 解析到的 IPv4：${domain_ipv4}"
+    echo -e "域名 DNS 解析到的 IPv6：${domain_ipv6}"
     echo -e "本机IPv4: ${local_ipv4}"
     echo -e "本机IPv6: ${local_ipv6}"
     sleep 2
+
     if [[ ${domain_ipv4} == ${local_ipv4} ]]; then
         echo -e "${OK} ${GreenBG} 域名 DNS 解析 IP 与 本机 IPv4 匹配 ${Font}"
         sleep 2
@@ -459,6 +513,9 @@ domain_check() {
         echo -e "${OK} ${GreenBG} 域名 DNS 解析 IP 与 本机 IPv6 匹配 ${Font}"
         sleep 2
     else
+        echo -e "${Error} ${RedBG} 域名 DNS 解析 IP 与 本机 IP 不匹配 ${Font}"
+        echo -e "域名IPv4: $domain_ipv4, 本机IPv4: $local_ipv4"
+        echo -e "域名IPv6: $domain_ipv6, 本机IPv6: $local_ipv6"
         echo -e "${Error} ${RedBG} 请确保域名添加了正确的 A / AAAA 记录，否则将无法正常使用 V2ray ${Font}"
         echo -e "${Error} ${RedBG} 域名 DNS 解析 IP 与 本机 IPv4 / IPv6 不匹配 是否继续安装？（y/n）${Font}" && read -r install
         case $install in
@@ -472,8 +529,8 @@ domain_check() {
             ;;
         esac
     fi
+    echo "domain_check函数执行完毕"
 }
-
 port_exist_check() {
     if [[ 0 -eq $(lsof -i:"$1" | grep -i -c "listen") ]]; then
         echo -e "${OK} ${GreenBG} $1 端口未被占用 ${Font}"
@@ -646,15 +703,15 @@ nginx_process_disabled() {
 acme_cron_update() {
     wget -N -P /usr/bin --no-check-certificate "https://raw.githubusercontent.com/bb33bb/V2Ray_ws-tls_bash_onekey/dev/ssl_update.sh"
     if [[ $(crontab -l | grep -c "ssl_update.sh") -lt 1 ]]; then
-      if [[ "${ID}" == "centos" ]]; then
-          #        sed -i "/acme.sh/c 0 3 * * 0 \"/root/.acme.sh\"/acme.sh --cron --home \"/root/.acme.sh\" \
-          #        &> /dev/null" /var/spool/cron/root
-          sed -i "/acme.sh/c 0 3 * * 0 bash ${ssl_update_file}" /var/spool/cron/root
-      else
-          #        sed -i "/acme.sh/c 0 3 * * 0 \"/root/.acme.sh\"/acme.sh --cron --home \"/root/.acme.sh\" \
-          #        &> /dev/null" /var/spool/cron/crontabs/root
-          sed -i "/acme.sh/c 0 3 * * 0 bash ${ssl_update_file}" /var/spool/cron/crontabs/root
-      fi
+        if [[ "${ID}" == "centos" ]]; then
+            #        sed -i "/acme.sh/c 0 3 * * 0 \"/root/.acme.sh\"/acme.sh --cron --home \"/root/.acme.sh\" \
+            #        &> /dev/null" /var/spool/cron/root
+            sed -i "/acme.sh/c 0 3 * * 0 bash ${ssl_update_file}" /var/spool/cron/root
+        else
+            #        sed -i "/acme.sh/c 0 3 * * 0 \"/root/.acme.sh\"/acme.sh --cron --home \"/root/.acme.sh\" \
+            #        &> /dev/null" /var/spool/cron/crontabs/root
+            sed -i "/acme.sh/c 0 3 * * 0 bash ${ssl_update_file}" /var/spool/cron/crontabs/root
+        fi
     fi
     judge "cron 计划任务更新"
 }
@@ -706,7 +763,7 @@ vmess_qr_link_image() {
 vmess_quan_link_image() {
     echo "$(info_extraction '\"ps\"') = vmess, $(info_extraction '\"add\"'), \
     $(info_extraction '\"port\"'), chacha20-ietf-poly1305, "\"$(info_extraction '\"id\"')\"", over-tls=true, \
-    certificate=1, obfs=ws, obfs-path="\"$(info_extraction '\"path\"')\"", " > /tmp/vmess_quan.tmp
+    certificate=1, obfs=ws, obfs-path="\"$(info_extraction '\"path\"')\"", " >/tmp/vmess_quan.tmp
     vmess_link="vmess://$(base64 -w 0 /tmp/vmess_quan.tmp)"
     {
         echo -e "$Red 二维码: $Font"
@@ -716,18 +773,18 @@ vmess_quan_link_image() {
 }
 
 vmess_link_image_choice() {
-        echo "请选择生成的链接种类"
-        echo "1: V2RayNG/V2RayN"
-        echo "2: quantumult"
-        read -rp "请输入：" link_version
-        [[ -z ${link_version} ]] && link_version=1
-        if [[ $link_version == 1 ]]; then
-            vmess_qr_link_image
-        elif [[ $link_version == 2 ]]; then
-            vmess_quan_link_image
-        else
-            vmess_qr_link_image
-        fi
+    echo "请选择生成的链接种类"
+    echo "1: V2RayNG/V2RayN"
+    echo "2: quantumult"
+    read -rp "请输入：" link_version
+    [[ -z ${link_version} ]] && link_version=1
+    if [[ $link_version == 1 ]]; then
+        vmess_qr_link_image
+    elif [[ $link_version == 2 ]]; then
+        vmess_quan_link_image
+    else
+        vmess_qr_link_image
+    fi
 }
 
 info_extraction() {
@@ -878,10 +935,10 @@ uninstall_all() {
     read -r uninstall_acme
     case $uninstall_acme in
     [yY][eE][sS] | [yY])
-      /root/.acme.sh/acme.sh --uninstall
-      rm -rf /root/.acme.sh
-      rm -rf /data/v2ray.crt /data/v2ray.key
-      ;;
+        /root/.acme.sh/acme.sh --uninstall
+        rm -rf /root/.acme.sh
+        rm -rf /data/v2ray.crt /data/v2ray.key
+        ;;
     *) ;;
     esac
     systemctl daemon-reload
@@ -997,8 +1054,8 @@ list() {
 }
 modify_camouflage_path() {
     [[ -z ${camouflage_path} ]] && camouflage_path=1
-    sed -i "/location/c \\\tlocation \/${camouflage_path}\/" ${nginx_conf}          #Modify the camouflage path of the nginx configuration file
-    sed -i "/\"path\"/c \\\t  \"path\":\"\/${camouflage_path}\/\"" ${v2ray_conf}    #Modify the camouflage path of the v2ray configuration file
+    sed -i "/location/c \\\tlocation \/${camouflage_path}\/" ${nginx_conf}       #Modify the camouflage path of the nginx configuration file
+    sed -i "/\"path\"/c \\\t  \"path\":\"\/${camouflage_path}\/\"" ${v2ray_conf} #Modify the camouflage path of the v2ray configuration file
     judge "V2ray camouflage path modified"
 }
 
